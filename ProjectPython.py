@@ -91,16 +91,19 @@ for row in extracted_data:
 
 
 
+
+
+
+
 # 4/ Data cleaning functions
 import pandas as pd
 
 headers, data = preview_dataset("data.csv")
-# Convert to DataFrame
+
 df = pd.DataFrame(data, columns=headers)
 print("Before cleaning:")
 print(df)
 
-# Clean with pandas
 df.fillna(0)
 df.dropna()
 
@@ -116,3 +119,103 @@ with open("data_cleaned.csv", "w") as f:
         f.write(row_str + "\n")
 
 print("Saved to data_cleaned.csv")
+
+
+
+
+
+
+
+
+# 5 / Create subsets
+
+def create_subsets(df):
+    subsets = {}
+    
+    if 'Salary' in df.columns:
+        high = df[df.Salary > 50000]
+        subsets["High earners"] = high
+    
+    if 'Year' in df.columns:
+        year2013 = df[df.Year == 2013]
+        subsets["Year 2013"] = year2013
+    
+    if 'JobTitle' in df.columns:
+        police = df[df.JobTitle.str.upper().str.contains("POLICE")]
+        subsets["Police"] = police
+    
+    return subsets
+
+# Example
+subsets = create_subsets(df)
+
+for name, subset in subsets.items():
+    print(f"{name}:")
+    print(subset.head())
+    
+    with open(f"{name.lower().replace(' ', '_')}.csv", "w") as f:
+        headers = ",".join(subset.columns)
+        f.write(headers + "\n")
+        for row in subset.values:
+            row_str = ",".join(str(x) for x in row)
+            f.write(row_str + "\n")
+    print(f"Saved to {name.lower().replace(' ', '_')}.csv\n")
+
+
+
+
+
+
+
+
+
+# 6/ Data visualization
+def create_columns(df):
+    if 'JobTitle' in df.columns:
+        df['Is_Manager'] = df.JobTitle.str.upper().str.contains('MANAGER|CHIEF')
+    return df
+df = create_columns(df)
+print("Data with new column 'Is_Manager':")
+print(df[['JobTitle', 'Is_Manager']].head())
+
+
+
+# 7/ Summary statistics
+def summary_statistics(df):
+    print("Summary Statistics:")
+    
+    if 'BasePay' in df.columns:
+        avg = df.BasePay.mean()
+        print(f"Average BasePay: {avg}")
+    
+    if 'JobTitle' in df.columns:
+        job_counts = {}
+        for job in df.JobTitle:
+            if job in job_counts:
+                job_counts[job] = job_counts[job] + 1
+            else:
+                job_counts[job] = 1
+        
+        items = list(job_counts.items())
+        
+        sorted_items = []
+        for item in items:
+            inserted = False
+            for i in range(len(sorted_items)):
+                if item[1] > sorted_items[i][1]:
+                    sorted_items.insert(i, item)
+                    inserted = True
+                    break
+            if not inserted:
+                sorted_items.append(item)
+        
+        print("Top 5 most common titles:")
+        for i in range(min(5, len(sorted_items))):
+            job, count = sorted_items[i]
+            print(f"  {i+1}. {job}: {count}")
+    
+    total = len(df)
+    print(f"Total number of employees: {total}")
+    
+    print("\nBasic statistics:")
+    print(df.describe())
