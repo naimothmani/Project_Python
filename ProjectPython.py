@@ -1,10 +1,5 @@
 import csv
 import os
-
-
-
-
-
 # 1/ Function to preview dataset
 def preview_dataset(filename):
     data = []
@@ -22,11 +17,6 @@ def preview_dataset(filename):
 headers, data = preview_dataset("data.csv")
 print("Headers:", headers)
 print("Data:", data)
-
-
-
-
-
 
 # 2/ Function to search for chief
 def search_for_chief(headers, data):
@@ -89,12 +79,6 @@ print("\nExtracted data:")
 for row in extracted_data:
     print(row)
 
-
-
-
-
-
-
 # 4/ Data cleaning functions
 import pandas as pd
 
@@ -104,12 +88,20 @@ df = pd.DataFrame(data, columns=headers)
 print("Before cleaning:")
 print(df)
 
-df.fillna(0)
-df.dropna()
+df=df.fillna(0) #added df=
+df = df.drop_duplicates()  # added duplicate removal
 
 print("\nAfter cleaning:")
 print(df)
-
+# converting numeric columns (bch yjiw numerique)
+numeric_cols = ['BasePay', 'OvertimePay', 'OtherPay', 'Benefits', 'TotalPay', 'TotalPayBenefits']
+for col in numeric_cols:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col]).fillna(0)  #  Convert to numbers
+if 'Year' in df.columns:
+    df['Year'] = pd.to_numeric(df['Year'], errors='coerce')  # Convert Year to numeric
+print("\nAfter cleaning:")
+print(df)
 # Save manually
 with open("data_cleaned.csv", "w") as f:
     headers = ",".join(df.columns)
@@ -121,19 +113,13 @@ with open("data_cleaned.csv", "w") as f:
 print("Saved to data_cleaned.csv")
 
 
-
-
-
-
-
-
 # 5 / Create subsets
 
 def create_subsets(df):
     subsets = {}
-    
-    if 'Salary' in df.columns:
-        high = df[df.Salary > 50000]
+    #esmha totalpay mch salary
+    if 'TotalPay' in df.columns:
+        high = df[df.TotalPay > 50000]
         subsets["High earners"] = high
     
     if 'Year' in df.columns:
@@ -218,13 +204,7 @@ def summary_statistics(df):
     
     print("\nBasic statistics:")
     print(df.describe())
-
-
-
-
-
-
-
+summary_statistics(df)  # added call for fct
 
 # 8/ Group analysis
 def group_analysis(df):
@@ -272,55 +252,42 @@ group_analysis(df)
 
 
 
-
-
-# 9/ Correlation analysis
-# Hedhy manich metakedd menha jemlaa
-def merge_datasets(df):
-
-    print("9. Merging with agency_codes.csv:")
-
-    if os.path.exists("agency_codes.csv"):
-        a, b = preview_dataset("agency_codes.csv")
-        adf = pd.DataFrame(b, columns=a)
+# 9/ Create agency lookup and merge
+def create_agency_lookup():
+    agency_data = {
+        'Agency': ['POL', 'FIR', 'HEA', 'PUB', 'TRA', 'EDU', 'SOC', 'REC', 'LIB', 'GEN'],
+        'AgencyName': ['Police Department', 'Fire Department', 'Health Services', 
+                       'Public Works', 'Transportation', 'Education Department', 
+                       'Social Services', 'Recreation and Parks', 'Library Services', 
+                       'General Services'],
+        'Department': ['Public Safety', 'Public Safety', 'Health & Human Services',
+                       'Infrastructure', 'Infrastructure', 'Community Services',
+                       'Health & Human Services', 'Community Services', 
+                       'Community Services', 'Administration']
+    }
+    
+    agency_df = pd.DataFrame(agency_data)
+    agency_df.to_csv('agency_codes.csv', index=False)
+    print("Created agency_codes.csv")
+    print(agency_df)
+    
+    return agency_df
+def merge_with_agency(main_df, agency_df):
+    if 'Agency' in main_df.columns:
+        merged_df = pd.merge(main_df, agency_df, on='Agency', how='left')
+        print(f"\nMerged {len(merged_df)} rows")
+        print("Sample merged data:")
+        print(merged_df.head())
         
-        print(f"Agency codes: {len(adf)} rows")
+        merged_df.to_csv('merged_data.csv', index=False)
+        print("\nSaved to merged_data.csv")
+        print("Each employee now has their full agency name!")
         
-        if 'Agency' in df.columns and 'Agency' in adf.columns:
-            m = pd.merge(df, adf, on='Agency', how='left')
-            
-            print(f"Merged: {len(m)} rows")
-            print("Columns:", m.columns.tolist())
-            
-            with open("merged_data.csv", "w") as f:
-                h = ",".join(m.columns)
-                f.write(h + "\n")
-                for r in m.values:
-                    rs = ",".join(str(x) for x in r)
-                    f.write(rs + "\n")
-            
-            print("Saved to merged_data.csv")
-            return m
-        else:
-            print("Error: Missing Agency column")
-            return df
+        return merged_df
     else:
-        print("Error: agency_codes.csv not found")
-        
-        sample = [
-            ["Agency", "AgencyName", "Code"],
-            ["A", "Administration", "ADM"],
-            ["B", "Police", "POL"],
-            ["C", "Fire", "FIR"],
-            ["D", "Health", "HLT"]
-        ]
-        
-        with open("agency_codes.csv", "w") as f:
-            for r in sample:
-                rs = ",".join(r)
-                f.write(rs + "\n")
-        
-        print("Created sample agency_codes.csv")
-        return df
+        print("Error: No 'Agency' column found in data.csv")
+        print(f"Available columns: {', '.join(main_df.columns)}")
+        return main_df
 
-merged_df = merge_datasets(df)
+agency_df = create_agency_lookup()
+merged_df = merge_with_agency(df, agency_df)
