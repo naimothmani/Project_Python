@@ -168,7 +168,6 @@ for name, subset in subsets.items():
 
 
 
-
 # 6/ Data visualization
 def create_columns(df):
     if 'JobTitle' in df.columns:
@@ -219,3 +218,109 @@ def summary_statistics(df):
     
     print("\nBasic statistics:")
     print(df.describe())
+
+
+
+
+
+
+
+
+# 8/ Group analysis
+def group_analysis(df):
+    print("8. Group analysis:")
+    
+    if 'Year' in df.columns and 'TotalPay' in df.columns:
+        x = {}
+        
+        for i in range(len(df)):
+            y = df['Year'].iloc[i]
+            p = df['TotalPay'].iloc[i]
+            
+            if y not in x:
+                x[y] = []
+            
+           
+            success = True
+            pf = 0
+            try:
+                pf = float(p)
+            except:
+                success = False
+            
+            if success:
+                x[y].append(pf)
+        
+        ylist = list(x.keys())
+        
+        n = len(ylist)
+        for i in range(n):
+            for j in range(0, n-i-1):
+                if ylist[j] > ylist[j+1]:
+                    ylist[j], ylist[j+1] = ylist[j+1], ylist[j]
+        
+        print("Average TotalPay per Year:")
+        for y in ylist:
+            plist = x[y]
+            if plist:
+                a = sum(plist) / len(plist)
+                print(f"  Year {y}: {a}")
+    
+    return
+
+group_analysis(df)
+
+
+
+
+
+# 9/ Correlation analysis
+
+def merge_datasets(df):
+
+    print("9. Merging with agency_codes.csv:")
+    
+    if os.path.exists("agency_codes.csv"):
+        a, b = preview_dataset("agency_codes.csv")
+        adf = pd.DataFrame(b, columns=a)
+        
+        print(f"Agency codes: {len(adf)} rows")
+        
+        if 'Agency' in df.columns and 'Agency' in adf.columns:
+            m = pd.merge(df, adf, on='Agency', how='left')
+            
+            print(f"Merged: {len(m)} rows")
+            print("Columns:", m.columns.tolist())
+            
+            with open("merged_data.csv", "w") as f:
+                h = ",".join(m.columns)
+                f.write(h + "\n")
+                for r in m.values:
+                    rs = ",".join(str(x) for x in r)
+                    f.write(rs + "\n")
+            
+            print("Saved to merged_data.csv")
+            return m
+        else:
+            print("Error: Missing Agency column")
+            return df
+    else:
+        print("Error: agency_codes.csv not found")
+        
+        sample = [
+            ["Agency", "AgencyName", "Code"],
+            ["A", "Administration", "ADM"],
+            ["B", "Police", "POL"],
+            ["C", "Fire", "FIR"],
+            ["D", "Health", "HLT"]
+        ]
+        
+        with open("agency_codes.csv", "w") as f:
+            for r in sample:
+                rs = ",".join(r)
+                f.write(rs + "\n")
+        
+        print("Created sample agency_codes.csv")
+        return df
+
+merged_df = merge_datasets(df)
