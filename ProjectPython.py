@@ -1,293 +1,375 @@
 import csv
-import os
-# 1/ Function to preview dataset
+import pandas as pd
+
+# Color definitions
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+# PART 1: FILE HANDLING
+
 def preview_dataset(filename):
-    data = []
-    if not os.path.exists(filename):
-        print(f"File {filename} does not exist.")
-        return data
     with open(filename, "r") as f:
         reader = csv.reader(f)
         headers = next(reader)
-        for row in reader: 
+        data = []
+        for row in reader:
             data.append(row)
     return headers, data
 
-# Example usage
-headers, data = preview_dataset("data.csv")
-print("Headers:", headers)
-print("Data:", data)
+def search_chief(headers, data):
+    results = []
+    for i in range(len(data)):
+        row = data[i]
+        for j in range(len(row)):
+            cell = row[j]
+            if "chief" in cell.lower():
+                results.append("Row " + str(i+1) + ", " + headers[j] + ": " + cell)
+    return results
 
-# 2/ Function to search for chief
-def search_for_chief(headers, data):
-    ress = []
-    
-    for i, row in enumerate(data, 1):
-        for j, cell in enumerate(row):
-            if "chief" in str(cell).lower():
-                ress.append({
-                    "row": i,
-                    "column": headers[j] if j < len(headers) else f"Column {j}",
-                    "value": cell
-                })
-    
-    return ress
-
-# Example usage of search_for_chief 
-headers, data = preview_dataset("data.csv")
-chiefres = search_for_chief(headers, data)
-
-print(f"Search ress for 'chief':")
-if chiefres:
-    for res in chiefres:
-        print(f"Row {res['row']}, Column '{res['column']}': {res['value']}")
-else:
-    print("No matches found for 'chief'")
-
-
-
-
-
-
-
-
-# 3/ Function to read CSV file
-def extract_two_columns(headers, data, x1, x2):
-    extra = []
+def search_keyword(headers, data, keyword):
+    count = 0
     for row in data:
-        if x1 < len(row) and x2 < len(row):
-            extra.append([row[x1], row[x2]])
-    return extra
+        for cell in row:
+            if keyword.lower() in cell.lower():
+                count += 1
+                break
+    return count
 
-# Usage example
-headers, data = preview_dataset("data.csv")
-extracted_data = extract_two_columns(headers, data, 0, 1)
+def extract_columns(headers, data, col1, col2):
+    extracted = []
+    for row in data:
+        extracted.append([row[col1], row[col2]])
+    return extracted
 
-if len(headers) > 0:
-    col1 = headers[0]
-else:
-    col1 = "Column 0"
+def save_extracted_columns(filename, headers, data, col1, col2):
+    with open(filename, "w") as f:
+        f.write(headers[col1] + "," + headers[col2] + "\n")
+        for row in data:
+            f.write(row[0] + "," + row[1] + "\n")
 
-if len(headers) > 1:
-    col2 = headers[1]
-else:
-    col2 = "Column 1"
+def run1(filename="data.csv"):
+    print("\n" + Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 1: FILE HANDLING" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET + "\n")
+    headers, data = preview_dataset(filename)
+    print(Colors.CYAN + "1. Dataset Preview" + Colors.RESET)
+    total_rows = len(data)
+    print("   Total rows: " + Colors.GREEN + str(total_rows) + Colors.RESET)
+    headers_text = ", ".join(headers)
+    print("   Headers: " + Colors.YELLOW + headers_text + Colors.RESET)
+    chief_results = search_chief(headers, data)
+    print("\n" + Colors.CYAN + "2. Search for 'chief'" + Colors.RESET)
+    num_matches = len(chief_results)
+    print("   Found: " + Colors.GREEN + str(num_matches) + Colors.RESET + " matches")
+    counter = 1
+    for result in chief_results[:3]:
+        short_result = result[:50]
+        print("   " + str(counter) + ". " + short_result + "...")
+        counter = counter + 1
+    manager_count = search_keyword(headers, data, "manager")
+    police_count = search_keyword(headers, data, "police")
+    print("   Manager: " + Colors.GREEN + str(manager_count) + Colors.RESET + " rows")
+    print("   Police: " + Colors.GREEN + str(police_count) + Colors.RESET + " rows")
+    extracted = extract_columns(headers, data, 0, 1)
+    print("\n" + Colors.CYAN + "3. Column Extraction" + Colors.RESET)
+    print("   Columns: " + Colors.YELLOW + headers[0] + ", " + headers[1] + Colors.RESET)
+    num_extracted = len(extracted)
+    print("   Extracted: " + Colors.GREEN + str(num_extracted) + Colors.RESET + " rows")
+    save_extracted_columns("extracted_columns.csv", headers, extracted, 0, 1)
+    print("   " + Colors.GREEN + "✓" + Colors.RESET + " Saved to extracted_columns.csv")
+    return headers, data
 
-print(f"Extracted columns: '{col1}' and '{col2}'")
-print(f"Number of rows extracted: {len(extracted_data)}")
-print("\nExtracted data:")
-for row in extracted_data:
-    print(row)
+# PART 2: DATA CLEANING
 
-# 4/ Data cleaning functions
-import pandas as pd
-
-headers, data = preview_dataset("data.csv")
-
-df = pd.DataFrame(data, columns=headers)
-print("Before cleaning:")
-print(df)
-
-df=df.fillna(0) #added df=
-df = df.drop_duplicates()  # added duplicate removal
-
-print("\nAfter cleaning:")
-print(df)
-# converting numeric columns (bch yjiw numerique)
-numeric_cols = ['BasePay', 'OvertimePay', 'OtherPay', 'Benefits', 'TotalPay', 'TotalPayBenefits']
-for col in numeric_cols:
-    if col in df.columns:
-        df[col] = pd.to_numeric(df[col]).fillna(0)  #  Convert to numbers
-if 'Year' in df.columns:
-    df['Year'] = pd.to_numeric(df['Year'], errors='coerce')  # Convert Year to numeric
-print("\nAfter cleaning:")
-print(df)
-# Save manually
-with open("data_cleaned.csv", "w") as f:
-    headers = ",".join(df.columns)
-    f.write(headers + "\n")
-    for row in df.values:
-        row_str = ",".join(str(x) for x in row)
-        f.write(row_str + "\n")
-
-print("Saved to data_cleaned.csv")
-
-
-# 5 / Create subsets
-
-def create_subsets(df):
-    subsets = {}
-    #esmha totalpay mch salary
-    if 'TotalPay' in df.columns:
-        high = df[df.TotalPay > 50000]
-        subsets["High earners"] = high
-    
-    if 'Year' in df.columns:
-        year2013 = df[df.Year == 2013]
-        subsets["Year 2013"] = year2013
-    
-    if 'JobTitle' in df.columns:
-        police = df[df.JobTitle.str.upper().str.contains("POLICE")]
-        subsets["Police"] = police
-    
-    return subsets
-
-# Example
-subsets = create_subsets(df)
-
-for name, subset in subsets.items():
-    print(f"{name}:")
-    print(subset.head())
-    
-    with open(f"{name.lower().replace(' ', '_')}.csv", "w") as f:
-        headers = ",".join(subset.columns)
-        f.write(headers + "\n")
-        for row in subset.values:
-            row_str = ",".join(str(x) for x in row)
-            f.write(row_str + "\n")
-    print(f"Saved to {name.lower().replace(' ', '_')}.csv\n")
-
-
-
-
-
-
-
-
-# 6/ Data visualization
-def create_columns(df):
-    if 'JobTitle' in df.columns:
-        df['Is_Manager'] = df.JobTitle.str.upper().str.contains('MANAGER|CHIEF')
+def load_and_convert_numeric(filename):
+    df = pd.read_csv(filename, low_memory=False)
+    numeric_cols = ['BasePay', 'OvertimePay', 'OtherPay', 'Benefits', 'TotalPay', 'TotalPayBenefits']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce') 
     return df
-df = create_columns(df)
-print("Data with new column 'Is_Manager':")
-print(df[['JobTitle', 'Is_Manager']].head())
+#converting to numeric to avoid errors.
 
-
-
-# 7/ Summary statistics
-def summary_statistics(df):
-    print("Summary Statistics:")
+def clean_dataset(df):
+    print("\n" + Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 2: DATA CLEANING" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET + "\n")
+    
+    print(Colors.CYAN + "Before Cleaning:" + Colors.RESET)
+    print("   Rows: " + Colors.YELLOW + str(len(df)) + Colors.RESET)
+    print("   Columns: " + Colors.YELLOW + str(len(df.columns)) + Colors.RESET)
+    
+    df = df.fillna(0)
+    df = df.drop_duplicates()
+    if 'TotalPay' in df.columns:
+        before = len(df)
+        df = df[df['TotalPay'] >= 0]
+        removed = before - len(df)
+        if removed > 0:
+            print("   " + Colors.RED + "✗" + Colors.RESET + " Removed " + str(removed) + " rows (negative TotalPay)")
     
     if 'BasePay' in df.columns:
-        avg = df.BasePay.mean()
-        print(f"Average BasePay: {avg}")
+        before = len(df)
+        df = df[df['BasePay'] >= 0]
+        removed = before - len(df)
+        if removed > 0:
+            print("   " + Colors.RED + "✗" + Colors.RESET + " Removed " + str(removed) + " rows (negative BasePay)")
     
-    if 'JobTitle' in df.columns:
-        job_counts = {}
-        for job in df.JobTitle:
-            if job in job_counts:
-                job_counts[job] = job_counts[job] + 1
-            else:
-                job_counts[job] = 1
-        
-        items = list(job_counts.items())
-        
-        sorted_items = []
-        for item in items:
-            inserted = False
-            for i in range(len(sorted_items)):
-                if item[1] > sorted_items[i][1]:
-                    sorted_items.insert(i, item)
-                    inserted = True
-                    break
-            if not inserted:
-                sorted_items.append(item)
-        
-        print("Top 5 most common titles:")
-        for i in range(min(5, len(sorted_items))):
-            job, count = sorted_items[i]
-            print(f"  {i+1}. {job}: {count}")
+    print("\n" + Colors.CYAN + "After Cleaning:" + Colors.RESET)
+    print("   Rows: " + Colors.GREEN + str(df.shape[0]) + Colors.RESET)
+    print("   Columns: " + Colors.GREEN + str(df.shape[1]) + Colors.RESET)
+    print("   Missing values: " + Colors.GREEN + str(df.isnull().sum().sum()) + Colors.RESET)
+    print("   Duplicates: " + Colors.GREEN + str(df.duplicated().sum()) + Colors.RESET)
+    return df
+
+def save_cleaned_data(df, filename="data_cleaned.csv"):
+    df.to_csv(filename, index=False)
+    print("   " + Colors.GREEN + "✓" + Colors.RESET + " Saved to " + filename)
+
+def run2(filename="data.csv"):
+    df = load_and_convert_numeric(filename)
+    df = clean_dataset(df)
+    save_cleaned_data(df)
+    return df
+
+# PART 3: SUBSETTING & FILTERING
+
+def create_high_earners(df, threshold=100000):
+    high_earners = df[df['TotalPay'] > threshold]
+    high_earners.to_csv("high_earners.csv", index=False)
+    return high_earners
+
+def create_year_subset(df, year=2013):
+    year_subset = df[df['Year'] == year]
+    year_subset.to_csv("year_" + str(year) + ".csv", index=False)
+    return year_subset
+
+def create_police_subset(df):
+    police = df[df['JobTitle'].str.contains("POLICE")]
+    police.to_csv("police_employees.csv", index=False)
+    return police
+
+def create_low_earners(df):
+    low_earners = df[df['TotalPay'] < 5000]
+    low_earners.to_csv("low_earners.csv", index=False)
+    return low_earners
+
+def create_fire_subset(df):
+    fire = df[df['JobTitle'].str.contains("FIRE")]
+    fire.to_csv("fire_employees.csv", index=False)
+    return fire
+
+def create_high_overtime(df):
+    if 'OvertimePay' in df.columns:
+        overtime = df[df['OvertimePay'] > 10000]
+        overtime.to_csv("high_overtime.csv", index=False)
+        return overtime
+    return None
+
+def create_top_1_percent(df):
+    top_1_percent = df[df['TotalPay'] > df['TotalPay'].quantile(0.99)]
+    top_1_percent.to_csv("top_1_percent.csv", index=False)
+    return top_1_percent
+
+def run3(df):
+    print("\n" + Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 3: SUBSETTING & FILTERING" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET + "\n")
     
-    total = len(df)
-    print(f"Total number of employees: {total}")
+    high_earners = create_high_earners(df)
+    print("   " + Colors.CYAN + "a)" + Colors.RESET + " High earners (>$100k): " + Colors.GREEN + str(len(high_earners)) + Colors.RESET)
     
-    print("\nBasic statistics:")
-    print(df.describe())
-summary_statistics(df)  # added call for fct
-
-# 8/ Group analysis
-def group_analysis(df):
-    print("8. Group analysis:")
+    year_2013 = create_year_subset(df, 2013)
+    print("   " + Colors.CYAN + "b)" + Colors.RESET + " Year 2013: " + Colors.GREEN + str(len(year_2013)) + Colors.RESET)
     
-    if 'Year' in df.columns and 'TotalPay' in df.columns:
-        x = {}
-        
-        for i in range(len(df)):
-            y = df['Year'].iloc[i]
-            p = df['TotalPay'].iloc[i]
-            
-            if y not in x:
-                x[y] = []
-            
-           
-            success = True
-            pf = 0
-            try:
-                pf = float(p)
-            except:
-                success = False
-            
-            if success:
-                x[y].append(pf)
-        
-        ylist = list(x.keys())
-        
-        n = len(ylist)
-        for i in range(n):
-            for j in range(0, n-i-1):
-                if ylist[j] > ylist[j+1]:
-                    ylist[j], ylist[j+1] = ylist[j+1], ylist[j]
-        
-        print("Average TotalPay per Year:")
-        for y in ylist:
-            plist = x[y]
-            if plist:
-                a = sum(plist) / len(plist)
-                print(f"  Year {y}: {a}")
+    police = create_police_subset(df)
+    print("   " + Colors.CYAN + "c)" + Colors.RESET + " Police employees: " + Colors.GREEN + str(len(police)) + Colors.RESET)
     
-    return
+    low_earners = create_low_earners(df)
+    print("   " + Colors.CYAN + "d)" + Colors.RESET + " Low earners (<$50k): " + Colors.GREEN + str(len(low_earners)) + Colors.RESET)
+    
+    fire = create_fire_subset(df)
+    print("   " + Colors.CYAN + "e)" + Colors.RESET + " Fire department: " + Colors.GREEN + str(len(fire)) + Colors.RESET)
+    
+    overtime = create_high_overtime(df)
+    if overtime is not None:
+        print("   " + Colors.CYAN + "f)" + Colors.RESET + " High overtime (>$10k): " + Colors.GREEN + str(len(overtime)) + Colors.RESET)
+    
+    top_1_percent = create_top_1_percent(df)
+    print("   " + Colors.CYAN + "g)" + Colors.RESET + " Top 1% earners: " + Colors.GREEN + str(len(top_1_percent)) + Colors.RESET)
 
-group_analysis(df)
+# PART 4: NEW COLUMNS & SUMMARY STATISTICS
 
+def create_is_manager_column(df):
+    df['Is_Manager'] = df['JobTitle'].str.contains('MANAGER|CHIEF')
+    manager_count = df['Is_Manager'].sum()
+    non_manager_count = len(df) - manager_count
+    print(Colors.CYAN + "Is_Manager Column:" + Colors.RESET)
+    print("   Managers: " + Colors.GREEN + str(manager_count) + Colors.RESET)
+    print("   Others: " + Colors.YELLOW + str(non_manager_count) + Colors.RESET)
+    return df
 
+def get_salary_grade(pay):
+    if pay < 40000:
+        return 'Low'
+    elif pay < 100000:
+        return 'Medium'
+    elif pay < 150000:
+        return 'High'
+    else:
+        return 'Very High'
 
-# 9/ Create agency lookup and merge
-def create_agency_lookup():
+def create_salary_grade_column(df):
+    df['Salary_Grade'] = df['TotalPay'].apply(get_salary_grade)
+    print("\n" + Colors.CYAN + "Salary_Grade Distribution:" + Colors.RESET)
+    for grade, count in df['Salary_Grade'].value_counts().items():
+        print("   " + grade + ": " + Colors.GREEN + str(count) + Colors.RESET)
+    return df
+
+def create_is_police_column(df):
+    df['Is_Police'] = df['JobTitle'].str.contains('POLICE')
+    print("\n" + Colors.CYAN + "Is_Police Column:" + Colors.RESET)
+    print("   Police employees: " + Colors.GREEN + str(df['Is_Police'].sum()) + Colors.RESET)
+    return df
+
+def create_total_compensation_column(df):
+    df['Total_Compensation'] = df['TotalPay'] + df['Benefits']
+    print("\n" + Colors.CYAN + "Total_Compensation:" + Colors.RESET)
+    print("   Average: " + Colors.GREEN + "$" + str(round(df['Total_Compensation'].mean(), 2)) + Colors.RESET)
+    return df
+
+def display_summary_statistics(df):
+    print("\n" + Colors.CYAN + "Summary Statistics:" + Colors.RESET)
+    print("   Total employees: " + Colors.GREEN + str(len(df)) + Colors.RESET)
+    print("   Average BasePay: " + Colors.YELLOW + "$" + str(round(df['BasePay'].mean(), 2)) + Colors.RESET)
+    print("   Average TotalPay: " + Colors.YELLOW + "$" + str(round(df['TotalPay'].mean(), 2)) + Colors.RESET)
+    print("   Median TotalPay: " + Colors.YELLOW + "$" + str(round(df['TotalPay'].median(), 2)) + Colors.RESET)
+    print("   Max TotalPay: " + Colors.GREEN + "$" + str(round(df['TotalPay'].max(), 2)) + Colors.RESET)
+    print("   Min TotalPay: " + Colors.RED + "$" + str(round(df['TotalPay'].min(), 2)) + Colors.RESET)
+    print("\n" + Colors.CYAN + "Top 5 Job Titles:" + Colors.RESET)
+    rank = 1
+    for job, count in df['JobTitle'].value_counts().head(5).items():
+        print("   " + str(rank) + ". " + job + ": " + Colors.GREEN + str(count) + Colors.RESET)
+        rank += 1
+
+def run4(df):
+    print("\n" + Colors.BOLD + Colors.HEADER + "="*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 4: NEW COLUMNS & SUMMARY STATISTICS" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET + "\n")
+    df = create_is_manager_column(df)
+    df = create_salary_grade_column(df)
+    df = create_is_police_column(df)
+    df = create_total_compensation_column(df)
+    display_summary_statistics(df)
+    return df
+
+# PART 5: GROUPING & AGGREGATION
+
+def average_totalpay_per_year(df):
+    print("\n" + Colors.CYAN + "Average TotalPay per Year:" + Colors.RESET)
+    for year, avg in df.groupby('Year')['TotalPay'].mean().items():
+        print("   " + str(int(year)) + ": " + Colors.GREEN + "$" + str(round(avg, 2)) + Colors.RESET) # rounding to only 2 digits after ,
+
+def top_5_highest_paying_jobs(df):
+    print("\n" + Colors.CYAN + "Top 5 Highest Paying Jobs:" + Colors.RESET)
+    top_jobs = df.groupby('JobTitle')['TotalPay'].mean().sort_values(ascending=False).head(5)
+    for i, (job, avg) in enumerate(top_jobs.items(), 1):
+        print("   " + str(i) + ". " + job + ": " + Colors.GREEN + "$" + str(round(avg, 2)) + Colors.RESET)
+
+def count_by_salary_grade(df):
+    print("\n" + Colors.CYAN + "Employees by Salary Grade:" + Colors.RESET)
+    for grade, count in df.groupby('Salary_Grade').size().items():
+        print("   " + grade + ": " + Colors.GREEN + str(count) + Colors.RESET)
+
+def manager_vs_non_manager(df):
+    print("\n" + Colors.CYAN + "Manager vs Non-Manager:" + Colors.RESET)
+    for is_mgr, stats in df.groupby('Is_Manager')['TotalPay'].agg(['mean', 'count']).iterrows():
+        role = "Manager" if is_mgr else "Non-Manager"
+        print("   " + role + ": Avg=" + Colors.GREEN + "$" + str(round(stats['mean'], 2)) + Colors.RESET + ", Count=" + Colors.YELLOW + str(int(stats['count'])) + Colors.RESET)
+
+def police_vs_fire_comparison(df):
+    if 'Is_Police' in df.columns:
+        police_avg = df[df['Is_Police']]['TotalPay'].mean()
+        fire_avg = df[df['JobTitle'].str.contains('FIRE', na=False)]['TotalPay'].mean()
+        print("\n" + Colors.CYAN + "Department Comparison:" + Colors.RESET)
+        print("   Police avg: " + Colors.GREEN + "$" + str(round(police_avg, 2)) + Colors.RESET)
+        print("   Fire avg: " + Colors.GREEN + "$" + str(round(fire_avg, 2)) + Colors.RESET)
+
+def run5(df):
+    print("\n" + Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 5: GROUPING & AGGREGATION" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    average_totalpay_per_year(df)
+    top_5_highest_paying_jobs(df)
+    count_by_salary_grade(df)
+    manager_vs_non_manager(df)
+    police_vs_fire_comparison(df)
+
+# PART 6: JOINING
+
+def create_agency_dataframe():
     agency_data = {
-        'Agency': ['POL', 'FIR', 'HEA', 'PUB', 'TRA', 'EDU', 'SOC', 'REC', 'LIB', 'GEN'],
-        'AgencyName': ['Police Department', 'Fire Department', 'Health Services', 
-                       'Public Works', 'Transportation', 'Education Department', 
-                       'Social Services', 'Recreation and Parks', 'Library Services', 
-                       'General Services'],
-        'Department': ['Public Safety', 'Public Safety', 'Health & Human Services',
-                       'Infrastructure', 'Infrastructure', 'Community Services',
-                       'Health & Human Services', 'Community Services', 
-                       'Community Services', 'Administration']
+        'Agency': ['San Francisco'],
+        'AgencyName': ['San Francisco City Government'],
+        'Department': ['Municipal Services'],
+        'Budget_Category': ['High']
     }
-    
-    agency_df = pd.DataFrame(agency_data)
+    return pd.DataFrame(agency_data)
+
+def save_agency_codes(agency_df):
     agency_df.to_csv('agency_codes.csv', index=False)
-    print("Created agency_codes.csv")
-    print(agency_df)
-    
-    return agency_df
+    print("   " + Colors.GREEN + "✓" + Colors.RESET + " Created agency_codes.csv (" + str(len(agency_df)) + " agencies)")
+
 def merge_with_agency(main_df, agency_df):
     if 'Agency' in main_df.columns:
         merged_df = pd.merge(main_df, agency_df, on='Agency', how='left')
-        print(f"\nMerged {len(merged_df)} rows")
-        print("Sample merged data:")
-        print(merged_df.head())
-        
         merged_df.to_csv('merged_data.csv', index=False)
-        print("\nSaved to merged_data.csv")
-        print("Each employee now has their full agency name!")
-        
+        print("   " + Colors.GREEN + "✓" + Colors.RESET + " Merged " + str(len(merged_df)) + " rows")
+        print("   " + Colors.CYAN + "New columns:" + Colors.RESET + " AgencyName, Department, Budget_Category")
+        print("\n" + Colors.CYAN + "Sample Merged Data:" + Colors.RESET)
+        if 'EmployeeName' in merged_df.columns:
+            sample = merged_df[['EmployeeName', 'Agency', 'AgencyName', 'Department']].head(3)
+            for _, row in sample.iterrows(): #_ means we dont care about the index we only need the rows
+                print("   " + row['EmployeeName'] + " | " + row['AgencyName'])
         return merged_df
     else:
-        print("Error: No 'Agency' column found in data.csv")
-        print(f"Available columns: {', '.join(main_df.columns)}")
+        print("   " + Colors.RED + "✗" + Colors.RESET + " No 'Agency' column found")
         return main_df
 
-agency_df = create_agency_lookup()
-merged_df = merge_with_agency(df, agency_df)
+def run6(df):
+    print("\n" + Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "PART 6: JOINING" + Colors.RESET)
+    print(Colors.BOLD + Colors.HEADER + "-"*60 + Colors.RESET + "\n")
+    agency_df = create_agency_dataframe()
+    save_agency_codes(agency_df)
+    merged_df = merge_with_agency(df, agency_df)
+    return merged_df
+
+# MAIN EXECUTION
+
+def main():
+    print("\n" + Colors.BOLD + Colors.BLUE + "*"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.BLUE + "  EMPLOYEE SALARY DATA ANALYSIS" + Colors.RESET)
+    print(Colors.BOLD + Colors.BLUE + "*"*60 + Colors.RESET)
+    
+    run1()
+    df = run2()
+    run3(df)
+    df = run4(df)
+    run5(df)
+    df = run6(df)
+    
+    print("\n" + Colors.BOLD + Colors.GREEN + "-"*60 + Colors.RESET)
+    print(Colors.BOLD + Colors.GREEN + "  DONE !" + Colors.RESET)
+    print(Colors.BOLD + Colors.GREEN + "-"*60 + Colors.RESET + "\n")
+
+main()
+
